@@ -1,0 +1,14 @@
+# ---------------------------------------------------------------
+# namespace.yaml
+# A Namespace is a logical partition inside one cluster. Names only
+# have to be unique inside a namespace, so "production" and "staging"
+# can each hold a Deployment called cicd-ostad without clashing.
+# ---------------------------------------------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    name: production
+    environment: production
+    managed-by: joyanta-sarker-joy

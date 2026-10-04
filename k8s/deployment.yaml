@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------
+# deployment.yaml
+# A Deployment does not run containers itself. It creates a
+# ReplicaSet, and the ReplicaSet keeps exactly "replicas" pods alive.
+# Kill a pod and a new one appears within seconds - that is the
+# self-healing the assignment is really demonstrating.
+# ---------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-ostad
+  namespace: production
+  labels:
+    app: cicd-ostad
+spec:
+  replicas: 2                      # two copies -> one can die without downtime
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: cicd-ostad              # MUST match template.metadata.labels below
+  strategy:
+    type: RollingUpdate            # replace pods gradually, never all at once
+    rollingUpdate:
+      maxUnavailable: 0            # never drop below 2 healthy pods
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: cicd-ostad            # the Service finds pods by this label
+    spec:
+      containers:
+        - name: cicd-ostad
+          image: joyantasarkerjoy/cicd-ostad:1.0   # pulled from Docker Hub
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000  # the port our Express server listens on
+          env:
+            - name: PORT
+              value: "4000"
+          # Requests = what the scheduler reserves. Limits = the hard ceiling.
+          # Kept small deliberately: this node only has 2 GB of RAM.
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "300m"
+              memory: "192Mi"
+          # Readiness: "may this pod receive traffic yet?"
+          # A failing readiness probe removes the pod from the Service.
+          readinessProbe:
+            httpGet:
+              path: /api
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # Liveness: "is this pod still alive?"
+          # A failing liveness probe makes Kubernetes restart the container.
+          livenessProbe:
+            httpGet:
+              path: /api
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
